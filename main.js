@@ -1,5 +1,5 @@
 import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji } from './api.js';
-import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal } from './ui.js';
+import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal, showEndOfFollowedProjectsMessage } from './ui.js';
 
 const feedContainer = document.getElementById('feed-container');
 const likedFeedContainer = document.getElementById('liked-feed-container');
@@ -193,7 +193,8 @@ async function fetchAndQueueItems() {
         if (newItems.length === 0) {
             console.log("No new items fetched.");
              if (user && !hasMoreFollowedProjects && !endOfFollowedMessageShown) {
-                console.log("No more projects from followed users. Continuing with generated prompts.");
+                console.log("No more projects from followed users. Will show message.");
+                showEndOfFollowedProjectsMessage();
                 endOfFollowedMessageShown = true;
             }
             return;
@@ -210,7 +211,7 @@ async function fetchAndQueueItems() {
     } catch (e) {
         console.error('Error fetching more items:', e);
     } finally {
-        isFetching = false;
+        // isFetching is handled by createAndAppendItem now to avoid race conditions
     }
 }
 
@@ -219,6 +220,7 @@ async function createAndAppendItem() {
         await fetchAndQueueItems();
         if (itemsQueue.length === 0) {
             console.log("Queue is still empty. Cannot create item.");
+            isFetching = false; // Release lock if no items are found
             return;
         }
     }
@@ -299,13 +301,16 @@ async function handleScroll() {
     const remainingItems = totalItems - currentItemIndex - 1;
 
     if (remainingItems < MIN_AHEAD_BUFFER) {
+        isFetching = true; // Set lock before starting creation loop
         const itemsToCreate = MIN_AHEAD_BUFFER - remainingItems;
         console.log(`Buffer low (${remainingItems} remaining), creating ${itemsToCreate} new items.`);
         
-        // Use a sequential loop to prevent race conditions from Promise.all
         for (let i = 0; i < itemsToCreate; i++) {
+            // Await each item creation to process them serially
+            // This also ensures fetchAndQueueItems is awaited if needed
             await createAndAppendItem();
         }
+        isFetching = false; // Release lock after all items are created
     }
 }
 

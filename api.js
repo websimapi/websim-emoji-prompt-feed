@@ -35,10 +35,21 @@ function convertShortcodesToEmoji(text) {
         return text;
     }
 
-    // This regex will find all substrings like :shortcode: and replace them.
-    return text.replace(/:([a-zA-Z0-9_+-]+):/g, (match, shortcode) => {
+    // First, replace known shortcodes.
+    let cleanedText = text.replace(/:([a-zA-Z0-9_+-]+):/g, (match, shortcode) => {
         return shortcodeMap[shortcode] || match;
     });
+
+    // Then, aggressively remove any remaining standalone English words or shortcode-like text.
+    // This looks for words (e.g., "architects") or unconverted shortcodes (e.g., ":unknown:")
+    // and removes them, while trying to preserve surrounding non-alphanumeric characters.
+    cleanedText = cleanedText.replace(/[a-zA-Z_]+/g, '');
+
+    // Remove any remaining colons that might be left over from broken shortcodes.
+    cleanedText = cleanedText.replace(/:/g, '');
+
+    // Trim whitespace from the ends that might result from removals.
+    return cleanedText.trim();
 }
 
 async function getUserInterests(currentUser) {
@@ -162,7 +173,7 @@ export async function convertToEmojiPrompt(text) {
             }],
         });
         const rawContent = completion.content || '❓';
-        return convertShortcodesToEmoji(rawContent);
+        return cleanEmojiString(rawContent);
     } catch (e) {
         console.error('Error converting to emoji:', e);
         return '🚧';
@@ -210,7 +221,7 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
             }],
         });
         const rawContent = completion.content || '✨';
-        return convertShortcodesToEmoji(rawContent);
+        return cleanEmojiString(rawContent);
     } catch (e) {
         console.error("Error summarizing to emoji:", e);
         // Fallback: convert the last prompt to emoji

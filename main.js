@@ -1,5 +1,5 @@
 import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji } from './api.js';
-import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal } from './ui.js';
+import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal, showEndOfFollowedProjectsMessage } from './ui.js';
 
 const feedContainer = document.getElementById('feed-container');
 const likedFeedContainer = document.getElementById('liked-feed-container');
@@ -14,6 +14,7 @@ let user = null;
 let followingCursor = null; 
 let hasMoreFollowedProjects = true; 
 let processedProjectIds = new Set();
+let endOfFollowedMessageShown = false;
 
 let likedItems = [];
 const LIKED_ITEMS_KEY = 'infinite_emoji_feed_liked_items';
@@ -191,8 +192,10 @@ async function fetchAndQueueItems() {
 
         if (newItems.length === 0) {
             console.log("No new items fetched.");
-             if (user && !hasMoreFollowedProjects) {
-                console.log("No more projects from followed users.");
+             if (user && !hasMoreFollowedProjects && !endOfFollowedMessageShown) {
+                console.log("No more projects from followed users. Will show message.");
+                showEndOfFollowedProjectsMessage();
+                endOfFollowedMessageShown = true;
             }
             return;
         }

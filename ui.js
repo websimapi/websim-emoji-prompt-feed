@@ -176,6 +176,21 @@ export function updateFeedItem(item, itemData) {
     }
 }
 
+export function showEndOfFollowedProjectsMessage() {
+    const messageElement = document.createElement('div');
+    messageElement.className = 'feed-item';
+    messageElement.innerHTML = `<div class="feed-item-content" style="justify-content:center; text-align: center;"><div class="prompt-text">You've seen all recent projects from users you follow!<br><br>Continuing with generated prompts...</div></div>`;
+    feedContainer.appendChild(messageElement);
+
+    // This message should not be snap-aligned if possible, but for now this works.
+    // We remove it after a delay so it doesn't permanently clog the feed.
+    setTimeout(() => {
+        if(messageElement.parentElement) {
+            messageElement.remove();
+        }
+    }, 8000);
+}
+
 export function showLoading(message) {
     const p = loadingIndicator.querySelector('p');
     if (p) p.textContent = message;

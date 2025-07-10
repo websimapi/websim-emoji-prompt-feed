@@ -41,32 +41,18 @@ function convertShortcodesToEmoji(text) {
     });
 }
 
-function filterToEmojiOnly(text) {
+function filterOutWords(text) {
     if (!text || typeof text !== 'string') {
-        return '';
+        return text;
     }
-    // This regex matches various emoji characters and sequences, including ZWJ sequences and skin tone modifiers.
-    const emojiRegex = /(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2190-\u21ff])/g;
-    
-    // First, convert shortcodes to actual emojis
-    let processedText = convertShortcodesToEmoji(text);
-
-    // Then, remove any characters that are not part of the emoji regex.
-    // We allow spaces and some joiners to preserve structure.
-    return processedText.replace(/([^\s\u200d]|[^a-zA-Z0-9_])+/g, (match) => {
-        if (match.match(emojiRegex)) {
-            return match;
-        }
-        // If a segment contains non-emoji text, clean it by removing letters/numbers.
-        // This is a bit aggressive but helps clean up words like "architects".
-        const cleaned = match.replace(/[a-zA-Z0-9]+/g, '');
-        // Only return if there's something left after cleaning
-        return cleaned.trim().length > 0 ? cleaned : '';
-    }).replace(/::/g, ':'); // Fix potential double colons from shortcode replacement
+    // This regex removes English words, but keeps emojis, symbols, and connecting characters.
+    // It's designed to specifically target and remove text like "architects" from the AI output.
+    return text.replace(/\b[a-zA-Z]{2,}\b/g, '').replace(/ +/g, ' ').trim();
 }
 
 async function getUserInterests(currentUser) {
     if (!currentUser) return 'The user is anonymous. Generate prompts based on generally popular, trending, and visually spectacular creative themes.';
+
     let interests = [];
     const MAX_INTERESTS = 50;
 
@@ -185,7 +171,8 @@ export async function convertToEmojiPrompt(text) {
             }],
         });
         const rawContent = completion.content || '❓';
-        return filterToEmojiOnly(rawContent);
+        const withShortcodesFixed = convertShortcodesToEmoji(rawContent);
+        return filterOutWords(withShortcodesFixed);
     } catch (e) {
         console.error('Error converting to emoji:', e);
         return '🚧';
@@ -233,7 +220,8 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
             }],
         });
         const rawContent = completion.content || '✨';
-        return filterToEmojiOnly(rawContent);
+        const withShortcodesFixed = convertShortcodesToEmoji(rawContent);
+        return filterOutWords(withShortcodesFixed);
     } catch (e) {
         console.error("Error summarizing to emoji:", e);
         // Fallback: convert the last prompt to emoji

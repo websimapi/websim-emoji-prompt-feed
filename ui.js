@@ -150,7 +150,7 @@ export function updateFeedItem(item, itemData) {
     }
     
     // Handle multiple prompts for projects
-    if (itemData.prompts.length > 1) {
+    if (itemData.type === 'project' && itemData.prompts.length > 1) {
         const viewDetailsButton = document.createElement('button');
         viewDetailsButton.textContent = 'View Prompts';
         viewDetailsButton.className = 'control-button';

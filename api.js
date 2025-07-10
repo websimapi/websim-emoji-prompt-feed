@@ -184,6 +184,32 @@ export async function getProjectPrompts(projectId) {
     }
 }
 
+export async function fetchTrendingProjects(count, offset) {
+    try {
+        console.log(`Fetching trending projects with offset ${offset}...`);
+        const url = `/api/v1/feed/trending?limit=${count}&offset=${offset}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch trending projects: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.feed && data.feed.data) {
+            console.log(`Fetched ${data.feed.data.length} trending projects.`);
+             // Adapt the structure to match what the main loop expects
+            const projects = data.feed.data.map(item => ({
+                project: item.project,
+                site: item.site,
+                project_revision: item.project_revision
+            }));
+            return { projects: projects, meta: data.feed.meta };
+        }
+        return { projects: [], meta: { offset, limit: count } };
+    } catch (error) {
+        console.error('Error fetching trending projects:', error);
+        return { projects: [], meta: { offset, limit: count } };
+    }
+}
+
 export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
     if (!prompts || prompts.length === 0) return '🤔';
     

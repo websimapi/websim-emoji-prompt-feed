@@ -1,4 +1,4 @@
-import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji } from './api.js';
+import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji, fetchTrendingProjects } from './api.js';
 import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal, showEndOfFollowedProjectsMessage } from './ui.js';
 
 const feedContainer = document.getElementById('feed-container');
@@ -13,6 +13,8 @@ let itemsQueue = [];
 let user = null;
 let followingCursor = null; 
 let hasMoreFollowedProjects = true; 
+let trendingOffset = 0;
+let hasMoreTrendingProjects = true;
 let processedProjectIds = new Set();
 let endOfFollowedMessageShown = false;
 
@@ -151,34 +153,55 @@ async function fetchAndQueueItems() {
 
     try {
         const promises = [];
+        // Always fetch some AI-generated prompts to keep things fresh
         promises.push(fetchNewPrompts(user, BATCH_SIZE));
         
+        // Prioritize projects from followed users
         if (user && hasMoreFollowedProjects) {
+            console.log("Attempting to fetch from followed projects.");
             promises.push(fetchFollowingProjects(user, BATCH_SIZE, followingCursor));
+        } 
+        // If followed users' projects are exhausted, fetch trending projects
+        else if (hasMoreTrendingProjects) {
+            console.log("Followed projects exhausted or not logged in. Fetching trending.");
+            promises.push(fetchTrendingProjects(BATCH_SIZE, trendingOffset));
         }
 
         const results = await Promise.all(promises);
         const prompts = results[0] || [];
         
-        const followedResult = (user && hasMoreFollowedProjects) ? results[1] : null;
-        let followedProjects = [];
+        let projectResult = results.length > 1 ? results[1] : null;
+        let fetchedProjects = [];
 
-        if (followedResult) {
-            followedProjects = followedResult.projects || [];
-            if (followedResult.meta) {
-                followingCursor = followedResult.meta.end_cursor;
-                hasMoreFollowedProjects = followedResult.meta.has_next_page;
-            } else {
-                hasMoreFollowedProjects = false;
+        if (projectResult) {
+            fetchedProjects = projectResult.projects || [];
+            
+            // Handle cursor for followed projects
+            if (user && hasMoreFollowedProjects) {
+                if (projectResult.meta) {
+                    followingCursor = projectResult.meta.end_cursor;
+                    hasMoreFollowedProjects = projectResult.meta.has_next_page;
+                } else {
+                    hasMoreFollowedProjects = false;
+                }
+            } 
+            // Handle offset for trending projects
+            else if (hasMoreTrendingProjects) {
+                 if (projectResult.meta && fetchedProjects.length > 0) {
+                    trendingOffset = projectResult.meta.offset + projectResult.meta.limit;
+                } else {
+                    hasMoreTrendingProjects = false;
+                    console.log("No more trending projects to fetch.");
+                }
             }
         }
         
         const newItems = [];
         newItems.push(...prompts.map(p => ({ type: 'generated', data: p })));
         
-        const newFollowedProjects = followedProjects.filter(p => {
-            const isValid = p.project && p.site && p.site.prompt && p.site.prompt.text;
-            if (!isValid) return false;
+        const newProjects = fetchedProjects.filter(p => {
+            if (!p || !p.project || !p.site?.prompt?.text) return false;
+            
             if (processedProjectIds.has(p.project.id)) {
                 console.log(`Skipping duplicate project: ${p.project.title || p.project.id}`);
                 return false;
@@ -186,20 +209,21 @@ async function fetchAndQueueItems() {
             return true;
         });
 
-        newFollowedProjects.forEach(p => processedProjectIds.add(p.project.id));
+        newProjects.forEach(p => processedProjectIds.add(p.project.id));
         
-        newItems.push(...newFollowedProjects.map(p => ({ type: 'project', data: p })));
+        newItems.push(...newProjects.map(p => ({ type: 'project', data: p })));
 
         if (newItems.length === 0) {
-            console.log("No new items fetched.");
+            console.log("No new items fetched in this batch.");
              if (user && !hasMoreFollowedProjects && !endOfFollowedMessageShown) {
                 console.log("No more projects from followed users. Will show message.");
                 showEndOfFollowedProjectsMessage();
                 endOfFollowedMessageShown = true;
             }
-            return;
+            // No return here, allow isFetching to be set to false
         }
         
+        // Shuffle the newly fetched items to mix AI prompts and projects
         for (let i = newItems.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
@@ -216,7 +240,7 @@ async function fetchAndQueueItems() {
 }
 
 async function createAndAppendItem() {
-    if (itemsQueue.length === 0) {
+    if (itemsQueue.length === 0 && !isFetching) { // check !isFetching to avoid multiple calls
         await fetchAndQueueItems();
         if (itemsQueue.length === 0) {
             console.log("Queue is still empty. Cannot create item.");

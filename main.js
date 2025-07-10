@@ -1,5 +1,5 @@
 import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji } from './api.js';
-import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal, showEndOfFollowedProjectsMessage } from './ui.js';
+import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal } from './ui.js';
 
 const feedContainer = document.getElementById('feed-container');
 const likedFeedContainer = document.getElementById('liked-feed-container');
@@ -193,8 +193,7 @@ async function fetchAndQueueItems() {
         if (newItems.length === 0) {
             console.log("No new items fetched.");
              if (user && !hasMoreFollowedProjects && !endOfFollowedMessageShown) {
-                console.log("No more projects from followed users. Will show message.");
-                showEndOfFollowedProjectsMessage();
+                console.log("No more projects from followed users. Continuing with generated prompts.");
                 endOfFollowedMessageShown = true;
             }
             return;
@@ -303,11 +302,10 @@ async function handleScroll() {
         const itemsToCreate = MIN_AHEAD_BUFFER - remainingItems;
         console.log(`Buffer low (${remainingItems} remaining), creating ${itemsToCreate} new items.`);
         
-        const creationPromises = [];
+        // Use a sequential loop to prevent race conditions from Promise.all
         for (let i = 0; i < itemsToCreate; i++) {
-            creationPromises.push(createAndAppendItem());
+            await createAndAppendItem();
         }
-        await Promise.all(creationPromises);
     }
 }
 

@@ -25,7 +25,7 @@ export function initializeModal() {
 function showDetailModal(fullEmojiText) {
     if (!detailModal || !modalEmojiContent || !modalCopyButton) return;
 
-    modalEmojiContent.innerHTML = twemoji.parse(fullEmojiText);
+    modalEmojiContent.textContent = fullEmojiText;
     
     modalCopyButton.textContent = 'Copy Emojis';
     modalCopyButton.onclick = () => {
@@ -137,9 +137,9 @@ export function updateFeedItem(item, itemData) {
     
     // Set summary emoji
     if (itemData.summaryEmoji.length > EMOJI_TRUNCATE_LENGTH) {
-        emojiDisplay.innerHTML = twemoji.parse(itemData.summaryEmoji.substring(0, EMOJI_TRUNCATE_LENGTH) + '...');
+        emojiDisplay.textContent = itemData.summaryEmoji.substring(0, EMOJI_TRUNCATE_LENGTH) + '...';
     } else {
-        emojiDisplay.innerHTML = twemoji.parse(itemData.summaryEmoji);
+        emojiDisplay.textContent = itemData.summaryEmoji;
     }
     
     // Show a summary or single prompt text
@@ -170,7 +170,7 @@ export function updateFeedItem(item, itemData) {
         itemData.prompts.forEach(p => {
             const promptEntry = document.createElement('div');
             promptEntry.className = 'individual-prompt';
-            promptEntry.innerHTML = `<span class="emoji">${twemoji.parse(p.emoji)}</span><span class="text">${p.text}</span>`;
+            promptEntry.innerHTML = `<span class="emoji">${p.emoji}</span><span class="text">${p.text}</span>`;
             individualPromptsContainer.appendChild(promptEntry);
         });
     }

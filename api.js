@@ -1,3 +1,11 @@
+const emojiConverter = new window.EmojiConvertor();
+emojiConverter.allow_native = true;
+
+function replaceEmojiShortcodes(text) {
+    if (!text) return '';
+    return emojiConverter.replace_colons(text);
+}
+
 async function getUserInterests(currentUser) {
     if (!currentUser) return 'The user is anonymous. Generate prompts based on generally popular, trending, and visually spectacular creative themes.';
 
@@ -118,7 +126,7 @@ export async function convertToEmojiPrompt(text) {
                 content: `Convert the following text prompt to emojis: "${text}"`
             }],
         });
-        return completion.content || '❓';
+        return replaceEmojiShortcodes(completion.content || '❓');
     } catch (e) {
         console.error('Error converting to emoji:', e);
         return '🚧';
@@ -165,7 +173,7 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
                 })
             }],
         });
-        return completion.content || '✨';
+        return replaceEmojiShortcodes(completion.content || '✨');
     } catch (e) {
         console.error("Error summarizing to emoji:", e);
         // Fallback: convert the last prompt to emoji

@@ -211,7 +211,7 @@ async function fetchAndQueueItems() {
     } catch (e) {
         console.error('Error fetching more items:', e);
     } finally {
-        // isFetching is handled by createAndAppendItem now to avoid race conditions
+        isFetching = false;
     }
 }
 
@@ -220,7 +220,6 @@ async function createAndAppendItem() {
         await fetchAndQueueItems();
         if (itemsQueue.length === 0) {
             console.log("Queue is still empty. Cannot create item.");
-            isFetching = false; // Release lock if no items are found
             return;
         }
     }
@@ -301,16 +300,14 @@ async function handleScroll() {
     const remainingItems = totalItems - currentItemIndex - 1;
 
     if (remainingItems < MIN_AHEAD_BUFFER) {
-        isFetching = true; // Set lock before starting creation loop
         const itemsToCreate = MIN_AHEAD_BUFFER - remainingItems;
         console.log(`Buffer low (${remainingItems} remaining), creating ${itemsToCreate} new items.`);
         
+        const creationPromises = [];
         for (let i = 0; i < itemsToCreate; i++) {
-            // Await each item creation to process them serially
-            // This also ensures fetchAndQueueItems is awaited if needed
-            await createAndAppendItem();
+            creationPromises.push(createAndAppendItem());
         }
-        isFetching = false; // Release lock after all items are created
+        await Promise.all(creationPromises);
     }
 }
 

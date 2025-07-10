@@ -1,9 +1,44 @@
-const emojiConverter = new window.EmojiConvertor();
-emojiConverter.allow_native = true;
+function convertShortcodesToEmoji(text) {
+    // A comprehensive map to convert common emoji shortcodes to their unicode characters.
+    const shortcodeMap = {
+        'blue_heart': '💙', 'green_heart': '💚', 'purple_heart': '💜', 'heart': '❤️', 'red_heart': '❤️', 
+        'yellow_heart': '💛', 'orange_heart': '🧡', 'black_heart': '🖤', 'white_heart': '🤍', 'brown_heart': '🤎',
+        'sparkles': '✨', 'fire': '🔥', 'rocket': '🚀', 'star': '⭐', 'star2': '🌟', 'thumbsup': '👍', '+1': '👍',
+        'thumbsdown': '👎', '-1': '👎', 'clap': '👏', 'wave': '👋', 'smile': '😄', 'joy': '😂', 'wink': '😉',
+        'blush': '😊', 'thinking': '🤔', 'brain': '🧠', 'robot': '🤖', 'alien': '👽', 'ghost': '👻', 'skull': '💀',
+        'art': '🎨', 'paintbrush': '🖌️', 'camera': '📷', 'movie_camera': '🎥', 'computer': '💻', 'floppy_disk': '💾',
+        'crystal_ball': '🔮', 'gem': '💎', 'ring': '💍', 'moneybag': '💰', 'light_bulb': '💡', 'zap': '⚡', 'boom': '💥',
+        'sweat_drops': '💦', 'droplet': '💧', 'cloud': '☁️', 'sun_behind_cloud': '⛅', 'rainbow': '🌈', 'full_moon': '🌕',
+        'new_moon': '🌑', 'earth_americas': '🌎', 'earth_africa': '🌍', 'earth_asia': '🌏', 'volcano': '🌋',
+        'mountain': '⛰️', 'desert_island': '🏝️', 'deciduous_tree': '🌳', 'four_leaf_clover': '🍀', 'seedling': '🌱',
+        'rose': '🌹', 'mushroom': '🍄', 'eyes': '👀', 'tongue': '👅', 'lips': '👄', 'hand': '✋', 'fist': '✊',
+        'v': '✌️', 'ok_hand': '👌', 'point_up': '☝️', 'point_down': '👇', 'point_left': '👈', 'point_right': '👉',
+        'pray': '🙏', 'muscle': '💪', 'man': '👨', 'woman': '👩', 'boy': '👦', 'girl': '👧', 'older_man': '👴',
+        'older_woman': '👵', 'cop': '👮', 'construction_worker': '👷', 'angel': '👼', 'princess': '👸', 'dancer': '💃',
+        'cat': '🐱', 'dog': '🐶', 'horse': '🐴', 'monkey_face': '🐵', 'dragon': '🐉', 'whale': '🐳', 'bird': '🐦',
+        'fish': '🐠', 'bug': '🐛', 'snail': '🐌', 'octopus': '🐙', 'game_die': '🎲', 'video_game': '🎮',
+        'joystick': '🕹️', 'dart': '🎯', 'trophy': '🏆', 'soccer': '⚽', 'basketball': '🏀', 'football': '🏈',
+        'baseball': '⚾', 'tennis': '🎾', 'car': '🚗', 'ship': '🚢', 'airplane': '✈️', 'house': '🏠', 'office': '🏢',
+        'castle': '🏰', 'clock': '⏰', 'hourglass': '⌛', 'phone': '☎️', 'sound': '🔊', 'musical_note': '🎵',
+        'key': '🔑', 'lock': '🔒', 'unlock': '🔓', 'hammer': '🔨', 'wrench': '🔧', 'knife': '🔪', 'gun': '🔫',
+        'bomb': '💣', 'pill': '💊', 'syringe': '💉', 'money_with_wings': '💸', 'credit_card': '💳', 'envelope': '✉️',
+        'scroll': '📜', 'book': '📖', 'notebook': '📓', 'link': '🔗', 'pushpin': '📌', 'scissors': '✂️', 'mag': '🔍',
+        'mag_right': '🔎', 'one': '1️⃣', 'two': '2️⃣', 'three': '3️⃣', 'four': '4️⃣', 'five': '5️⃣', 'six': '6️⃣',
+        'seven': '7️⃣', 'eight': '8️⃣', 'nine': '9️⃣', 'zero': '0️⃣', 'hash': '#️⃣', 'arrow_up': '⬆️', 'arrow_down': '⬇️',
+        'arrow_left': '⬅️', 'arrow_right': '➡️', 'heavy_plus_sign': '➕', 'heavy_minus_sign': '➖',
+        'heavy_division_sign': '➗', 'heavy_multiplication_x': '✖️', 'heavy_check_mark': '✔️', 'x': '❌',
+        'negative_squared_cross_mark': '❎', 'question': '❓', 'grey_question': '❔', 'exclamation': '❗',
+        'grey_exclamation': '❕', 'tm': '™️', 'copyright': '©️', 'registered': '®️'
+    };
 
-function replaceEmojiShortcodes(text) {
-    if (!text) return '';
-    return emojiConverter.replace_colons(text);
+    if (!text || typeof text !== 'string') {
+        return text;
+    }
+
+    // This regex will find all substrings like :shortcode: and replace them.
+    return text.replace(/:([a-zA-Z0-9_+-]+):/g, (match, shortcode) => {
+        return shortcodeMap[shortcode] || match;
+    });
 }
 
 async function getUserInterests(currentUser) {
@@ -120,13 +155,14 @@ export async function convertToEmojiPrompt(text) {
         const completion = await websim.chat.completions.create({
             messages: [{
                 role: 'system',
-                content: 'You are an AI that masterfully converts a text prompt into a visually representative sequence of emojis. Create a detailed and expressive emoji string that captures the essence of the prompt. Respond with ONLY emojis. Do not use any other characters or text.'
+                content: 'You are an AI that masterfully converts a text prompt into a visually representative sequence of emojis. Create a detailed and expressive emoji string that captures the essence of the prompt. Respond with ONLY emojis. Do not use any other characters or text. Do not use emoji shortcodes like :heart: or :smile:, use the actual Unicode characters.'
             }, {
                 role: 'user',
                 content: `Convert the following text prompt to emojis: "${text}"`
             }],
         });
-        return replaceEmojiShortcodes(completion.content || '❓');
+        const rawContent = completion.content || '❓';
+        return convertShortcodesToEmoji(rawContent);
     } catch (e) {
         console.error('Error converting to emoji:', e);
         return '🚧';
@@ -163,7 +199,7 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
         const completion = await websim.chat.completions.create({
             messages: [{
                 role: 'system',
-                content: `You are an expert emoji artist. Your task is to analyze a user's project prompt history and the project's current HTML structure to create a single, detailed, and narrative summary prompt written exclusively with emojis. This emoji prompt should tell a story, capturing the theme, evolution, and key elements of the project. Do not just list random emojis; create a coherent visual sentence. Be expressive and detailed. Respond with ONLY the emoji string, nothing else.`
+                content: `You are an expert emoji artist. Your task is to analyze a user's project prompt history and the project's current HTML structure to create a single, detailed, and narrative summary prompt written exclusively with emojis. This emoji prompt should tell a story, capturing the theme, evolution, and key elements of the project. Do not just list random emojis; create a coherent visual sentence. Be expressive and detailed. Respond with ONLY the emoji string, nothing else. Do not use emoji shortcodes like :heart:, use the actual Unicode characters.`
             }, {
                 role: 'user',
                 content: JSON.stringify({
@@ -173,7 +209,8 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
                 })
             }],
         });
-        return replaceEmojiShortcodes(completion.content || '✨');
+        const rawContent = completion.content || '✨';
+        return convertShortcodesToEmoji(rawContent);
     } catch (e) {
         console.error("Error summarizing to emoji:", e);
         // Fallback: convert the last prompt to emoji

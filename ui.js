@@ -1,5 +1,53 @@
 const feedContainer = document.getElementById('feed-container');
 const loadingIndicator = document.getElementById('loading');
+let detailModal, modalCloseButton, modalEmojiContent, modalCopyButton;
+
+const EMOJI_TRUNCATE_LENGTH = 250;
+
+export function initializeModal() {
+    detailModal = document.getElementById('detail-modal');
+    modalCloseButton = document.getElementById('modal-close-button');
+    modalEmojiContent = document.getElementById('modal-emoji-content');
+    modalCopyButton = document.getElementById('modal-copy-button');
+
+    if (modalCloseButton) {
+        modalCloseButton.addEventListener('click', hideDetailModal);
+    }
+    if (detailModal) {
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) {
+                hideDetailModal();
+            }
+        });
+    }
+}
+
+function showDetailModal(fullEmojiText) {
+    if (!detailModal || !modalEmojiContent || !modalCopyButton) return;
+
+    modalEmojiContent.textContent = fullEmojiText;
+    
+    modalCopyButton.textContent = 'Copy Emojis';
+    modalCopyButton.onclick = () => {
+        navigator.clipboard.writeText(fullEmojiText).then(() => {
+            modalCopyButton.textContent = 'Copied!';
+            setTimeout(() => {
+                modalCopyButton.textContent = 'Copy Emojis';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            modalCopyButton.textContent = 'Copy Failed';
+        });
+    };
+
+    detailModal.classList.remove('hidden');
+}
+
+function hideDetailModal() {
+    if (detailModal) {
+        detailModal.classList.add('hidden');
+    }
+}
 
 export function createFeedItemElement(user, project, parentContainer = feedContainer) {
     const itemContent = document.createElement('div');
@@ -24,6 +72,14 @@ export function createFeedItemElement(user, project, parentContainer = feedConta
     const emojiDisplay = document.createElement('div');
     emojiDisplay.className = 'emoji-display';
     emojiDisplay.textContent = '...';
+    emojiDisplay.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fullEmoji = itemContent.dataset.fullEmoji;
+        if (fullEmoji) {
+            showDetailModal(fullEmoji);
+        }
+    });
 
     const promptText = document.createElement('div');
     promptText.className = 'prompt-text';
@@ -67,6 +123,7 @@ export function createFeedItemElement(user, project, parentContainer = feedConta
 
 export function updateFeedItem(item, itemData) {
     item.dataset.itemData = JSON.stringify(itemData);
+    item.dataset.fullEmoji = itemData.summaryEmoji;
     
     const emojiDisplay = item.querySelector('.emoji-display');
     const promptText = item.querySelector('.prompt-text');
@@ -79,7 +136,11 @@ export function updateFeedItem(item, itemData) {
     promptText.textContent = '';
     
     // Set summary emoji
-    emojiDisplay.textContent = itemData.summaryEmoji;
+    if (itemData.summaryEmoji.length > EMOJI_TRUNCATE_LENGTH) {
+        emojiDisplay.textContent = itemData.summaryEmoji.substring(0, EMOJI_TRUNCATE_LENGTH) + '...';
+    } else {
+        emojiDisplay.textContent = itemData.summaryEmoji;
+    }
     
     // Show a summary or single prompt text
     if (itemData.type === 'project') {

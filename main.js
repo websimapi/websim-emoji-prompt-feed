@@ -1,5 +1,5 @@
 import { fetchNewPrompts, fetchFollowingProjects, convertToEmojiPrompt, getProjectPrompts, summarizeAndConvertToEmoji } from './api.js';
-import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError } from './ui.js';
+import { createFeedItemElement, updateFeedItem, hideLoading, showLoading, showFinalError, initializeModal } from './ui.js';
 
 const feedContainer = document.getElementById('feed-container');
 const likedFeedContainer = document.getElementById('liked-feed-container');
@@ -314,6 +314,7 @@ async function main() {
 
     likeButton.addEventListener('click', likeCurrentItem);
     likeButton.addEventListener('contextmenu', toggleLikedFeed);
+    initializeModal();
 
     try {
         user = await websim.getUser();

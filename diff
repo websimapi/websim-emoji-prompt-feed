@@ -1,0 +1,68 @@
+--- 
++++ 
+@@ -1,7 +1,7 @@
+             <div id="feed-container"></div>
+             <div id="liked-feed-container" class="hidden"></div>
+
+             <button id="like-button" class="like-button">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-heart"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+             </button>
+             <div id="loading">
+                 <div class="spinner"></div>
+@@ -123,7 +123,7 @@
+         .emoji-display {
+             font-size: 3rem;
+             text-align: center;
+             line-height: 1.2;
+             margin-bottom: 20px;
+             padding: 0 20px;
+             word-break: break-word;
+             cursor: pointer;
+         }
+
+         .prompt-text {
+             background: rgba(0, 0, 0, 0.4);
+@@ -441,7 +441,7 @@
+         export async function getProjectPrompts(projectId) {
+             try {
+                 const response = await fetch(`/api/v1/projects/${projectId}/revisions?first=100`);
+                 if (!response.ok) throw new Error(`Failed to fetch revisions for project ${projectId}`);
+                 const data = await response.json();
+                 const prompts = data.revisions.data
+                     .map(r => r.project_revision?.site?.prompt?.text)
+                     .filter(Boolean); // Filter out null/undefined prompts
+                 return [...new Set(prompts)].reverse(); // Unique prompts, chronological order
+             } catch (e) {
+                 console.error('Error fetching project prompts:', e);
+                 return [];
+             }
+         }
+
+         export async function fetchTrendingProjects(count, offset) {
+@@ -567,7 +567,7 @@
+                 const loadingIndicator = document.getElementById('loading');
+                 let detailModal, modalCloseButton, modalEmojiContent, modalCopyButton;
+
+                 const EMOJI_TRUNCATE_LENGTH = 25;
+@@ -703,7 +703,7 @@
+                 });
+             }
+         }
+
+         function showDetailModal(fullEmojiText) {
+@@ -943,7 +943,7 @@
+                 } else if (item.type === 'project') {
+                     const projectData = item.data;
+                     const author = projectData.project.created_by;
+                     const project = projectData.project;
+                     
+                     // This check ensures we only proceed if we have a valid author.
+                     if (!author || !author.username) {
+                         console.warn(`Skipping project ${projectData.project.id} due to missing author information.`);
+                         return;
+                     }
+
+                     const itemElement = createFeedItemElement(author, project, feedContainer);
+
+                     try {
+                         const promptsText = await getProjectPrompts(project.id);

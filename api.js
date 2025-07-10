@@ -41,15 +41,6 @@ function convertShortcodesToEmoji(text) {
     });
 }
 
-function filterOutWords(text) {
-    if (!text || typeof text !== 'string') {
-        return text;
-    }
-    // This regex removes English words, but keeps emojis, symbols, and connecting characters.
-    // It's designed to specifically target and remove text like "architects" from the AI output.
-    return text.replace(/\b[a-zA-Z]{2,}\b/g, '').replace(/ +/g, ' ').trim();
-}
-
 async function getUserInterests(currentUser) {
     if (!currentUser) return 'The user is anonymous. Generate prompts based on generally popular, trending, and visually spectacular creative themes.';
 
@@ -171,8 +162,7 @@ export async function convertToEmojiPrompt(text) {
             }],
         });
         const rawContent = completion.content || '❓';
-        const withShortcodesFixed = convertShortcodesToEmoji(rawContent);
-        return filterOutWords(withShortcodesFixed);
+        return convertShortcodesToEmoji(rawContent);
     } catch (e) {
         console.error('Error converting to emoji:', e);
         return '🚧';
@@ -220,8 +210,7 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
             }],
         });
         const rawContent = completion.content || '✨';
-        const withShortcodesFixed = convertShortcodesToEmoji(rawContent);
-        return filterOutWords(withShortcodesFixed);
+        return convertShortcodesToEmoji(rawContent);
     } catch (e) {
         console.error("Error summarizing to emoji:", e);
         // Fallback: convert the last prompt to emoji

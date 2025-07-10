@@ -4,6 +4,22 @@ let detailModal, modalCloseButton, modalEmojiContent, modalCopyButton;
 
 const EMOJI_TRUNCATE_LENGTH = 250;
 
+function unicodeToHtmlEntities(text) {
+    if (!text) return '';
+    let result = '';
+    // Use for...of to iterate over Unicode code points, which correctly handles astral symbols (like many emoji).
+    for (const char of text) {
+        const codePoint = char.codePointAt(0);
+        // Encode characters that are not basic ASCII. This will include all emojis.
+        if (codePoint > 127) {
+            result += `&#x${codePoint.toString(16)};`;
+        } else {
+            result += char;
+        }
+    }
+    return result;
+}
+
 export function initializeModal() {
     detailModal = document.getElementById('detail-modal');
     modalCloseButton = document.getElementById('modal-close-button');
@@ -25,7 +41,7 @@ export function initializeModal() {
 function showDetailModal(fullEmojiText) {
     if (!detailModal || !modalEmojiContent || !modalCopyButton) return;
 
-    modalEmojiContent.textContent = fullEmojiText;
+    modalEmojiContent.innerHTML = unicodeToHtmlEntities(fullEmojiText);
     
     modalCopyButton.textContent = 'Copy Emojis';
     modalCopyButton.onclick = () => {
@@ -136,11 +152,15 @@ export function updateFeedItem(item, itemData) {
     promptText.textContent = '';
     
     // Set summary emoji
-    if (itemData.summaryEmoji.length > EMOJI_TRUNCATE_LENGTH) {
-        emojiDisplay.textContent = itemData.summaryEmoji.substring(0, EMOJI_TRUNCATE_LENGTH) + '...';
+    const emojiChars = [...itemData.summaryEmoji]; // Unicode-aware character array
+    let truncatedEmojiString;
+
+    if (emojiChars.length > EMOJI_TRUNCATE_LENGTH) {
+        truncatedEmojiString = emojiChars.slice(0, EMOJI_TRUNCATE_LENGTH).join('') + '...';
     } else {
-        emojiDisplay.textContent = itemData.summaryEmoji;
+        truncatedEmojiString = itemData.summaryEmoji;
     }
+    emojiDisplay.innerHTML = unicodeToHtmlEntities(truncatedEmojiString);
     
     // Show a summary or single prompt text
     if (itemData.type === 'project') {
@@ -170,7 +190,18 @@ export function updateFeedItem(item, itemData) {
         itemData.prompts.forEach(p => {
             const promptEntry = document.createElement('div');
             promptEntry.className = 'individual-prompt';
-            promptEntry.innerHTML = `<span class="emoji">${p.emoji}</span><span class="text">${p.text}</span>`;
+
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'emoji';
+            emojiSpan.innerHTML = unicodeToHtmlEntities(p.emoji);
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'text';
+            textSpan.textContent = p.text; // Use textContent for safety
+
+            promptEntry.appendChild(emojiSpan);
+            promptEntry.appendChild(textSpan);
+            
             individualPromptsContainer.appendChild(promptEntry);
         });
     }

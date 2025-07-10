@@ -112,7 +112,7 @@ export async function convertToEmojiPrompt(text) {
         const completion = await websim.chat.completions.create({
             messages: [{
                 role: 'system',
-                content: 'You are an AI that converts a text prompt into a visually representative sequence of emojis. Respond with ONLY emojis. Do not use any other characters or text. Keep it concise but expressive.'
+                content: 'You are an AI that masterfully converts a text prompt into a visually representative sequence of emojis. Create a detailed and expressive emoji string that captures the essence of the prompt. Respond with ONLY emojis. Do not use any other characters or text.'
             }, {
                 role: 'user',
                 content: `Convert the following text prompt to emojis: "${text}"`
@@ -155,7 +155,7 @@ export async function summarizeAndConvertToEmoji(prompts, pageHtml) {
         const completion = await websim.chat.completions.create({
             messages: [{
                 role: 'system',
-                content: `You are a creative assistant. Your task is to analyze a user's project prompt history and the project's current HTML structure to create a single, summary prompt written exclusively with emojis. This emoji prompt should encapsulate the overall theme, evolution, and essence of the project. Respond with ONLY the emoji string.`
+                content: `You are an expert emoji artist. Your task is to analyze a user's project prompt history and the project's current HTML structure to create a single, detailed, and narrative summary prompt written exclusively with emojis. This emoji prompt should tell a story, capturing the theme, evolution, and key elements of the project. Do not just list random emojis; create a coherent visual sentence. Be expressive and detailed. Respond with ONLY the emoji string, nothing else.`
             }, {
                 role: 'user',
                 content: JSON.stringify({

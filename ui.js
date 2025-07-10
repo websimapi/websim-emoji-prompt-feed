@@ -177,13 +177,18 @@ export function updateFeedItem(item, itemData) {
 }
 
 export function showEndOfFollowedProjectsMessage() {
+    // Check if the message is already present
+    if (document.querySelector('.end-of-feed-message')) {
+        return;
+    }
+
     const messageElement = document.createElement('div');
-    messageElement.className = 'feed-item';
-    messageElement.innerHTML = `<div class="feed-item-content" style="justify-content:center; text-align: center;"><div class="prompt-text">You've seen all recent projects from users you follow!<br><br>Continuing with generated prompts...</div></div>`;
+    messageElement.className = 'feed-item end-of-feed-message';
+    messageElement.innerHTML = `<div class="feed-item-content" style="justify-content:center; text-align: center;"><div class="prompt-text">You've seen all recent projects from users you follow!<br><br>Continuing with generated and trending content...</div></div>`;
     feedContainer.appendChild(messageElement);
 
-    // This message should not be snap-aligned if possible, but for now this works.
-    // We remove it after a delay so it doesn't permanently clog the feed.
+    // The message will scroll away naturally with new content.
+    // If we want it to be temporary, a timeout can be used.
     setTimeout(() => {
         if(messageElement.parentElement) {
             messageElement.remove();

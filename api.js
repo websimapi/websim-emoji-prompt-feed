@@ -130,7 +130,7 @@ export async function fetchNewPrompts(currentUser, count) {
 }
 
 export async function fetchFollowingProjects(currentUser, count, afterCursor = null) {
-    if (!currentUser) return { projects: [], meta: null };
+    if (!currentUser) return { projects: [], meta: null, source: 'following' };
     try {
         console.log(`Fetching projects from users followed by @${currentUser.username}...`);
         const url = `/api/v1/users/${currentUser.username}/following/projects?first=${count}&posted=true&sort_by=updated_at${afterCursor ? `&after=${afterCursor}` : ''}`;
@@ -141,12 +141,12 @@ export async function fetchFollowingProjects(currentUser, count, afterCursor = n
         const data = await response.json();
         if (data.projects && data.projects.data) {
             console.log(`Fetched ${data.projects.data.length} projects from followed users.`);
-            return { projects: data.projects.data, meta: data.projects.meta };
+            return { projects: data.projects.data, meta: data.projects.meta, source: 'following' };
         }
-        return { projects: [], meta: null };
+        return { projects: [], meta: null, source: 'following' };
     } catch (error) {
         console.error('Error fetching following projects:', error);
-        return { projects: [], meta: null };
+        return { projects: [], meta: null, source: 'following' };
     }
 }
 
@@ -201,12 +201,12 @@ export async function fetchTrendingProjects(count, offset) {
                 site: item.site,
                 project_revision: item.project_revision
             }));
-            return { projects: projects, meta: data.feed.meta };
+            return { projects: projects, meta: data.feed.meta, source: 'trending' };
         }
-        return { projects: [], meta: { offset, limit: count } };
+        return { projects: [], meta: { offset, limit: count }, source: 'trending' };
     } catch (error) {
         console.error('Error fetching trending projects:', error);
-        return { projects: [], meta: { offset, limit: count } };
+        return { projects: [], meta: { offset, limit: count }, source: 'trending' };
     }
 }
 

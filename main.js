@@ -153,84 +153,88 @@ async function fetchAndQueueItems() {
 
     try {
         const promises = [];
-        // Always fetch some AI-generated prompts to keep things fresh
-        promises.push(fetchNewPrompts(user, BATCH_SIZE));
-        
-        // Prioritize projects from followed users
+        const BATCH_REQUEST_SIZE = 3; // Request smaller chunks from each source
+
+        // 1. Fetch AI-generated prompts
+        promises.push(fetchNewPrompts(user, BATCH_REQUEST_SIZE));
+
+        // 2. Fetch projects from followed users
         if (user && hasMoreFollowedProjects) {
-            console.log("Attempting to fetch from followed projects.");
-            promises.push(fetchFollowingProjects(user, BATCH_SIZE, followingCursor));
-        } 
-        // If followed users' projects are exhausted, fetch trending projects
-        else if (hasMoreTrendingProjects) {
-            console.log("Followed projects exhausted or not logged in. Fetching trending.");
-            promises.push(fetchTrendingProjects(BATCH_SIZE, trendingOffset));
+            promises.push(fetchFollowingProjects(user, BATCH_REQUEST_SIZE, followingCursor));
         }
 
-        const results = await Promise.all(promises);
-        const prompts = results[0] || [];
-        
-        let projectResult = results.length > 1 ? results[1] : null;
-        let fetchedProjects = [];
-
-        if (projectResult) {
-            fetchedProjects = projectResult.projects || [];
-            
-            // Handle cursor for followed projects
-            if (user && hasMoreFollowedProjects) {
-                if (projectResult.meta) {
-                    followingCursor = projectResult.meta.end_cursor;
-                    hasMoreFollowedProjects = projectResult.meta.has_next_page;
-                } else {
-                    hasMoreFollowedProjects = false;
-                }
-            } 
-            // Handle offset for trending projects
-            else if (hasMoreTrendingProjects) {
-                 if (projectResult.meta && fetchedProjects.length > 0) {
-                    trendingOffset = projectResult.meta.offset + projectResult.meta.limit;
-                } else {
-                    hasMoreTrendingProjects = false;
-                    console.log("No more trending projects to fetch.");
-                }
-            }
+        // 3. Fetch trending projects for discovery
+        if (hasMoreTrendingProjects) {
+            promises.push(fetchTrendingProjects(BATCH_REQUEST_SIZE, trendingOffset));
         }
+
+        if (promises.length === 1) { // Only fetching AI prompts, maybe we are out of other content
+             console.log("Only fetching AI prompts. Other sources might be exhausted.");
+        }
+
+        const results = await Promise.allSettled(promises);
         
         const newItems = [];
-        newItems.push(...prompts.map(p => ({ type: 'generated', data: p })));
         
-        const newProjects = fetchedProjects.filter(p => {
-            if (!p || !p.project || !p.site?.prompt?.text) return false;
-            
-            if (processedProjectIds.has(p.project.id)) {
-                console.log(`Skipping duplicate project: ${p.project.title || p.project.id}`);
-                return false;
+        results.forEach(result => {
+            if (result.status === 'rejected' || !result.value) {
+                console.error("A fetch operation failed:", result.reason || "No value");
+                return;
             }
-            return true;
+
+            const data = result.value;
+
+            // Handle AI prompts (returns an array of strings)
+            if (Array.isArray(data)) { 
+                newItems.push(...data.map(p => ({ type: 'generated', data: p })));
+                return;
+            }
+
+            // Handle project results (following or trending)
+            if (data.source && data.projects) {
+                const fetchedProjects = data.projects;
+                
+                if (data.source === 'following') {
+                    followingCursor = data.meta?.end_cursor;
+                    hasMoreFollowedProjects = data.meta?.has_next_page ?? false;
+                    if (!hasMoreFollowedProjects && user && !endOfFollowedMessageShown) {
+                        showEndOfFollowedProjectsMessage();
+                        endOfFollowedMessageShown = true;
+                    }
+                } else if (data.source === 'trending') {
+                    if (fetchedProjects.length > 0 && data.meta) {
+                        trendingOffset = data.meta.offset + data.meta.limit;
+                    } else {
+                        hasMoreTrendingProjects = false;
+                        console.log("No more trending projects to fetch.");
+                    }
+                }
+
+                const uniqueNewProjects = fetchedProjects.filter(p => {
+                    if (!p?.project?.id || !p.site?.prompt?.text) return false;
+                    if (processedProjectIds.has(p.project.id)) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                uniqueNewProjects.forEach(p => processedProjectIds.add(p.project.id));
+                newItems.push(...uniqueNewProjects.map(p => ({ type: 'project', data: p })));
+            }
         });
 
-        newProjects.forEach(p => processedProjectIds.add(p.project.id));
-        
-        newItems.push(...newProjects.map(p => ({ type: 'project', data: p })));
-
-        if (newItems.length === 0) {
-            console.log("No new items fetched in this batch.");
-             if (user && !hasMoreFollowedProjects && !endOfFollowedMessageShown) {
-                console.log("No more projects from followed users. Will show message.");
-                showEndOfFollowedProjectsMessage();
-                endOfFollowedMessageShown = true;
+        if (newItems.length > 0) {
+            // Shuffle the newly fetched items to mix sources
+            for (let i = newItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
             }
-            // No return here, allow isFetching to be set to false
-        }
-        
-        // Shuffle the newly fetched items to mix AI prompts and projects
-        for (let i = newItems.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
-        }
 
-        itemsQueue.push(...newItems);
-        console.log(`Added ${newItems.length} new items. Queue size: ${itemsQueue.length}`);
+            itemsQueue.push(...newItems);
+            console.log(`Added ${newItems.length} new items. Queue size: ${itemsQueue.length}`);
+        } else {
+            console.log("No new items were added to the queue in this fetch cycle.");
+        }
 
     } catch (e) {
         console.error('Error fetching more items:', e);
@@ -240,13 +244,19 @@ async function fetchAndQueueItems() {
 }
 
 async function createAndAppendItem() {
-    if (itemsQueue.length === 0 && !isFetching) { // check !isFetching to avoid multiple calls
-        await fetchAndQueueItems();
+    if (itemsQueue.length < MIN_AHEAD_BUFFER && !isFetching) { 
+        fetchAndQueueItems(); // No await, let it run in background
+    }
+    
+    if (itemsQueue.length === 0) {
+        if (!isFetching) await fetchAndQueueItems(); // If still empty, wait for one fetch
         if (itemsQueue.length === 0) {
-            console.log("Queue is still empty. Cannot create item.");
-            return;
+            console.log("Queue is still empty after fetch. Cannot create item.");
+            // Optionally show a message that content is temporarily unavailable
+            return; 
         }
     }
+
     const item = itemsQueue.shift();
     if (!item) return;
 
